@@ -1,0 +1,35 @@
+{
+    "name": "abricot/backend-php",
+    "description": "API REST Abricot.co - PHP 8 natif + PDO (SQLite)",
+    "type": "project",
+    "license": "ISC",
+    "require": {
+        "php": ">=8.2",
+        "ext-json": "*",
+        "ext-pdo": "*",
+        "ext-pdo_sqlite": "*",
+        "firebase/php-jwt": "^7.0",
+        "vlucas/phpdotenv": "^5.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "scripts": {
+        "start": [
+            "Composer\\Config::disableProcessTimeout",
+            "php -S localhost:8000 -t public public/index.php"
+        ],
+        "db:init": "php database/init.php",
+        "seed": "php database/seed.php",
+        "setup": [
+            "@db:init",
+            "@seed"
+        ],
+        "lint": "find src public config database -name '*.php' -print0 | xargs -0 -n1 php -l"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

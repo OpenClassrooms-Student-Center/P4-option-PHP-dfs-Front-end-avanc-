@@ -1,0 +1,15 @@
+/vendor/
+
+# Variables d'environnement (ne jamais versionner les secrets)
+.env
+
+# Base de données locale
+*.sqlite
+*.sqlite-journal
+*.db
+
+# Système / IDE
+.DS_Store
+.idea/
+.vscode/
+*.log
