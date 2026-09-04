@@ -8,6 +8,7 @@ declare(strict_types=1);
  */
 
 use App\Controllers\AuthController;
+use App\Controllers\DashboardController;
 use App\Controllers\ProjectController;
 use App\Controllers\UserController;
 use App\Core\Router;
@@ -49,4 +50,10 @@ return static function (Router $router, PDO $db, array $config): void {
     $router->add('DELETE', '/projects/{id}', [$projectController, 'destroy'], $projectMember);
     $router->add('POST', '/projects/{id}/contributors', [$projectController, 'addContributor'], $projectMember);
     $router->add('DELETE', '/projects/{id}/contributors/{userId}', [$projectController, 'removeContributor'], $projectMember);
+
+    // Tableau de bord
+    $dashboardController = new DashboardController($tasks, $projects);
+    $router->add('GET', '/dashboard/assigned-tasks', [$dashboardController, 'assignedTasks'], $protected);
+    $router->add('GET', '/dashboard/projects-with-tasks', [$dashboardController, 'projectsWithTasks'], $protected);
+    $router->add('GET', '/dashboard/stats', [$dashboardController, 'stats'], $protected);
 };
