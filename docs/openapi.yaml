@@ -1,0 +1,880 @@
+# Documentation OpenAPI de l'API Abricot.co (variante PHP)
+# Visualisation : http://localhost:8000/api-docs
+
+openapi: 3.0.3
+info:
+  title: API Abricot.co
+  version: 1.0.0
+  description: >-
+    API REST de gestion de projets et de tâches (authentification JWT, projets,
+    contributeurs, tâches, commentaires, tableau de bord).
+
+
+    Toutes les réponses suivent le format `{ success, message, data?, error? }`.
+servers:
+  - url: http://localhost:8000
+    description: Serveur de développement
+tags:
+  - name: Authentification
+  - name: Utilisateurs
+  - name: Projets
+  - name: Contributeurs
+  - name: Tâches
+  - name: Commentaires
+  - name: Tableau de bord
+security:
+  - bearerAuth: []
+paths:
+  /auth/register:
+    post:
+      summary: Inscription d'un nouvel utilisateur
+      tags:
+        - Authentification
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                password:
+                  type: string
+                  example: P@ssword123
+                  description: 8 caractères min., majuscule, minuscule, chiffre et caractère
+                    spécial (@$!%*?&)
+                name:
+                  type: string
+                  example: John Doe
+      responses:
+        "201":
+          description: Utilisateur créé, token renvoyé
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: "#/components/schemas/Profile"
+                          token:
+                            type: string
+        "400":
+          $ref: "#/components/responses/ValidationFailed"
+        "409":
+          description: Email déjà utilisé (EMAIL_ALREADY_EXISTS)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /auth/login:
+    post:
+      summary: Connexion d'un utilisateur
+      tags:
+        - Authentification
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: alice@example.com
+                password:
+                  type: string
+                  example: P@ssword123
+      responses:
+        "200":
+          description: Connexion réussie, token renvoyé
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: "#/components/schemas/Profile"
+                          token:
+                            type: string
+        "400":
+          $ref: "#/components/responses/ValidationFailed"
+        "401":
+          description: Identifiants incorrects (INVALID_CREDENTIALS)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /auth/profile:
+    get:
+      summary: Profil de l'utilisateur connecté
+      tags:
+        - Authentification
+      responses:
+        "200":
+          description: Profil récupéré
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: "#/components/schemas/Profile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      summary: Modifier le nom et/ou l'email de l'utilisateur connecté
+      tags:
+        - Authentification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Alice M.
+                email:
+                  type: string
+                  format: email
+      responses:
+        "200":
+          description: Profil mis à jour
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: "#/components/schemas/Profile"
+        "400":
+          $ref: "#/components/responses/ValidationFailed"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Email déjà utilisé (EMAIL_ALREADY_EXISTS)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /auth/password:
+    put:
+      summary: Modifier le mot de passe de l'utilisateur connecté
+      tags:
+        - Authentification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - currentPassword
+                - newPassword
+              properties:
+                currentPassword:
+                  type: string
+                newPassword:
+                  type: string
+      responses:
+        "200":
+          description: Mot de passe modifié
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Success"
+        "400":
+          $ref: "#/components/responses/ValidationFailed"
+        "401":
+          description: Non authentifié ou mot de passe actuel incorrect
+            (INVALID_CURRENT_PASSWORD)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /users/search:
+    get:
+      summary: Rechercher des utilisateurs par nom ou email (autocomplete, 10
+        résultats max.)
+      tags:
+        - Utilisateurs
+      parameters:
+        - in: query
+          name: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+          example: ali
+      responses:
+        "200":
+          description: Utilisateurs trouvés
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          users:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/User"
+        "400":
+          description: Recherche trop courte (INVALID_QUERY)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /projects:
+    get:
+      summary: Projets dont l'utilisateur est propriétaire ou membre
+      tags:
+        - Projets
+      responses:
+        "200":
+          description: Liste des projets (avec le rôle de l'utilisateur dans userRole)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          projects:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Project"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      summary: Créer un projet (le créateur en devient propriétaire / administrateur)
+      tags:
+        - Projets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                  example: Refonte du site
+                description:
+                  type: string
+                  maxLength: 500
+                contributors:
+                  type: array
+                  description: Emails des contributeurs (les emails inconnus sont ignorés)
+                  items:
+                    type: string
+                    format: email
+                  example:
+                    - bob@example.com
+      responses:
+        "201":
+          description: Projet créé
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          project:
+                            $ref: "#/components/schemas/Project"
+        "400":
+          $ref: "#/components/responses/ValidationFailed"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  "/projects/{id}":
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    get:
+      summary: Détail d'un projet (membres uniquement)
+      tags:
+        - Projets
+      responses:
+        "200":
+          description: Projet avec ses membres et ses tâches
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          project:
+                            $ref: "#/components/schemas/Project"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/ProjectNotFound"
+    put:
+      summary: Modifier un projet (administrateurs uniquement)
+      tags:
+        - Projets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                description:
+                  type: string
+                  maxLength: 500
+      responses:
+        "200":
+          description: Projet mis à jour
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          project:
+                            $ref: "#/components/schemas/Project"
+        "400":
+          $ref: "#/components/responses/ValidationFailed"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/ProjectNotFound"
+    delete:
+      summary: Supprimer un projet (propriétaire uniquement, suppression en cascade)
+      tags:
+        - Projets
+      responses:
+        "200":
+          description: Projet supprimé
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/ProjectNotFound"
+  "/projects/{id}/contributors":
+    post:
+      summary: Ajouter un contributeur (administrateurs uniquement)
+      tags:
+        - Contributeurs
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: emma@example.com
+                role:
+                  type: string
+                  enum:
+                    - ADMIN
+                    - CONTRIBUTOR
+                  default: CONTRIBUTOR
+      responses:
+        "201":
+          description: Contributeur ajouté
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          member:
+                            $ref: "#/components/schemas/ProjectMember"
+        "400":
+          $ref: "#/components/responses/ValidationFailed"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Projet ou utilisateur introuvable (PROJECT_NOT_FOUND, USER_NOT_FOUND)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Utilisateur déjà membre (USER_ALREADY_MEMBER)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  "/projects/{id}/contributors/{userId}":
+    delete:
+      summary: Retirer un contributeur (administrateurs uniquement)
+      tags:
+        - Contributeurs
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Contributeur retiré
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Projet introuvable ou utilisateur non membre (PROJECT_NOT_FOUND,
+            MEMBER_NOT_FOUND)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  # TODO (étudiant) : documenter ici les routes des tâches et des commentaires
+  # (/projects/{id}/tasks..., /projects/{id}/tasks/{taskId}/comments...)
+  /dashboard/assigned-tasks:
+    get:
+      summary: Tâches assignées à l'utilisateur connecté (les plus urgentes d'abord)
+      tags:
+        - Tableau de bord
+      responses:
+        "200":
+          description: Tâches triées par priorité puis par échéance
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          tasks:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Task"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /dashboard/projects-with-tasks:
+    get:
+      summary: Projets dans lesquels l'utilisateur a des tâches assignées
+      tags:
+        - Tableau de bord
+      responses:
+        "200":
+          description: Projets avec uniquement les tâches assignées à l'utilisateur
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          projects:
+                            type: array
+                            items:
+                              allOf:
+                                - $ref: "#/components/schemas/Project"
+                                - type: object
+                                  properties:
+                                    tasks:
+                                      type: array
+                                      items:
+                                        $ref: "#/components/schemas/Task"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /dashboard/stats:
+    get:
+      summary: Statistiques des tâches assignées à l'utilisateur connecté
+      tags:
+        - Tableau de bord
+      responses:
+        "200":
+          description: Statistiques
+          content:
+            application/json:
+              example:
+                success: true
+                message: Statistiques du tableau de bord récupérées
+                data:
+                  stats:
+                    tasks:
+                      total: 4
+                      urgent: 2
+                      overdue: 1
+                      byStatus:
+                        TODO: 2
+                        IN_PROGRESS: 1
+                        DONE: 1
+                    projects:
+                      total: 2
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token obtenu via /auth/login ou /auth/register
+  parameters:
+    ProjectId:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+      description: ID du projet
+    TaskId:
+      in: path
+      name: taskId
+      required: true
+      schema:
+        type: string
+      description: ID de la tâche
+    CommentId:
+      in: path
+      name: commentId
+      required: true
+      schema:
+        type: string
+      description: ID du commentaire
+  responses:
+    ValidationFailed:
+      description: Données invalides
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ValidationError"
+    Unauthorized:
+      description: Token manquant, invalide ou expiré
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            success: false
+            message: Token d'authentification manquant
+            error: UNAUTHORIZED
+    Forbidden:
+      description: L'utilisateur n'a pas les droits nécessaires
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            success: false
+            message: Accès refusé au projet
+            error: FORBIDDEN
+    ProjectNotFound:
+      description: Projet introuvable
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            success: false
+            message: Projet non trouvé
+            error: PROJECT_NOT_FOUND
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          example: cmabc123
+        email:
+          type: string
+          format: email
+          example: alice@example.com
+        name:
+          type: string
+          nullable: true
+          example: Alice Martin
+    Profile:
+      allOf:
+        - $ref: "#/components/schemas/User"
+        - type: object
+          properties:
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+    ProjectMember:
+      type: object
+      properties:
+        id:
+          type: string
+        role:
+          type: string
+          enum:
+            - ADMIN
+            - CONTRIBUTOR
+        joinedAt:
+          type: string
+          format: date-time
+        userId:
+          type: string
+        projectId:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: Application E-commerce
+        description:
+          type: string
+          nullable: true
+        ownerId:
+          type: string
+        owner:
+          $ref: "#/components/schemas/User"
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectMember"
+        _count:
+          type: object
+          properties:
+            tasks:
+              type: integer
+        userRole:
+          type: string
+          enum:
+            - ADMIN
+            - CONTRIBUTOR
+          description: Rôle de l'utilisateur connecté (le propriétaire est ADMIN)
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    TaskAssignee:
+      type: object
+      properties:
+        id:
+          type: string
+        taskId:
+          type: string
+        userId:
+          type: string
+        assignedAt:
+          type: string
+          format: date-time
+        user:
+          $ref: "#/components/schemas/User"
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+          example: Pensez à vérifier les droits d'accès.
+        taskId:
+          type: string
+        authorId:
+          type: string
+        author:
+          $ref: "#/components/schemas/User"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+          example: Développer l'API REST
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum:
+            - TODO
+            - IN_PROGRESS
+            - DONE
+            - CANCELLED
+        priority:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+            - URGENT
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+        projectId:
+          type: string
+        creatorId:
+          type: string
+        creator:
+          $ref: "#/components/schemas/User"
+        project:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        assignees:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskAssignee"
+        comments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Comment"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Success:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+        data:
+          type: object
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          description: Message lisible
+        error:
+          type: string
+          description: Code d'erreur stable, exploitable par le front-end
+    ValidationError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Données invalides
+        error:
+          type: string
+          example: VALIDATION_ERROR
+        data:
+          type: object
+          properties:
+            errors:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                  message:
+                    type: string
