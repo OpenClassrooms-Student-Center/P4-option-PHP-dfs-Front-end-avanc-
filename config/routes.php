@@ -58,6 +58,7 @@ return static function (Router $router, PDO $db, array $config): void {
     // Tâches (TODO étudiant : implémenter les méthodes de TaskController)
     $taskController = new TaskController($tasks, $projects);
     $router->add('GET', '/projects/{id}/tasks', [$taskController, 'index'], $projectMember);
+    $router->add('GET', '/projects/{id}/tasks/{taskId}', [$taskController, 'show'], $projectMember);
     $router->add('POST', '/projects/{id}/tasks', [$taskController, 'store'], $projectMember);
     $router->add('PUT', '/projects/{id}/tasks/{taskId}', [$taskController, 'update'], $projectMember);
     $router->add('DELETE', '/projects/{id}/tasks/{taskId}', [$taskController, 'destroy'], $projectMember);

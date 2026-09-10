@@ -70,6 +70,26 @@ final class TaskRepository
         return $tasks;
     }
 
+    /**
+     * Détail d'une tâche
+     */
+    public function findById(string $taskId): ?array
+    {
+        $statement = $this->db->prepare(self::SELECT_TASK . ' WHERE t.id = ?');
+        $statement->execute([$taskId]);
+        $row = $statement->fetch();
+
+        if (!$row) {
+            return null;
+        }
+
+        $task = $this->mapTask($row, withProject: true);
+        $task['assignees'] = $this->findAssignees($taskId);
+        $task['comments'] = $this->findComments($taskId);
+
+        return $task;
+    }
+
     /*
      * TODO (étudiant) : méthodes nécessaires à la création, la modification et la suppression des tâches.
      * Pensez à créer une tâche et ses assignations dans une même transaction (tout ou rien).

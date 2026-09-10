@@ -32,6 +32,18 @@ final class TaskController extends Controller
         return JsonResponse::success('Tâches récupérées avec succès', ['tasks' => $tasks]);
     }
 
+    /** GET /projects/{id}/tasks/{taskId} */
+    public function show(Request $request): JsonResponse
+    {
+        $task = $this->tasks->findById($request->param('taskId'));
+
+        if ($task === null) {
+            return JsonResponse::success('Aucune tâche trouvée', ['task' => null]);
+        }
+
+        return JsonResponse::success('Tâche récupérée avec succès', ['task' => $task]);
+    }
+
     /**
      * POST /projects/{id}/tasks
      *
