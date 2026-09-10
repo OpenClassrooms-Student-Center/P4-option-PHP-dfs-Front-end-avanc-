@@ -24,6 +24,14 @@ final class TaskController extends Controller
     ) {
     }
 
+    /** GET /projects/{id}/tasks */
+    public function index(Request $request): JsonResponse
+    {
+        $tasks = $this->tasks->findByProject($request->param('id'));
+
+        return JsonResponse::success('Tâches récupérées avec succès', ['tasks' => $tasks]);
+    }
+
     /**
      * POST /projects/{id}/tasks
      *

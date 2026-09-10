@@ -51,6 +51,25 @@ final class TaskRepository
         return array_map(fn (array $row) => $this->mapTask($row, withProject: false), $statement->fetchAll());
     }
 
+    /**
+     * Tâches d'un projet, les plus urgentes en premier
+     */
+    public function findByProject(string $projectId): array
+    {
+        $statement = $this->db->prepare(self::SELECT_TASK . ' WHERE t.projectId = ? ORDER BY t.priority DESC, t.dueDate ASC');
+        $statement->execute([$projectId]);
+
+        $tasks = [];
+        foreach ($statement->fetchAll() as $row) {
+            $task = $this->mapTask($row, withProject: true);
+            $task['assignees'] = $this->findAssignees($row['id']);
+            $task['comments'] = $this->findComments($row['id']);
+            $tasks[] = $task;
+        }
+
+        return $tasks;
+    }
+
     /*
      * TODO (étudiant) : méthodes nécessaires à la création, la modification et la suppression des tâches.
      * Pensez à créer une tâche et ses assignations dans une même transaction (tout ou rien).
@@ -93,6 +112,37 @@ final class TaskRepository
     }
 
     // ---------- Hydratation ----------
+
+    private function findAssignees(string $taskId): array
+    {
+        $statement = $this->db->prepare(
+            'SELECT a.id, a.taskId, a.userId, a.assignedAt, u.email, u.name
+             FROM task_assignees a JOIN users u ON u.id = a.userId
+             WHERE a.taskId = ? ORDER BY a.assignedAt'
+        );
+        $statement->execute([$taskId]);
+
+        return array_map(static fn (array $row): array => [
+            'id' => $row['id'],
+            'taskId' => $row['taskId'],
+            'userId' => $row['userId'],
+            'assignedAt' => $row['assignedAt'],
+            'user' => ['id' => $row['userId'], 'email' => $row['email'], 'name' => $row['name']],
+        ], $statement->fetchAll());
+    }
+
+    private function findComments(string $taskId): array
+    {
+        $statement = $this->db->prepare(
+            'SELECT c.id, c.content, c.createdAt, c.updatedAt, c.taskId, c.authorId, u.email, u.name
+             FROM comments c JOIN users u ON u.id = c.authorId
+             WHERE c.taskId = ? ORDER BY c.createdAt'
+        );
+        $statement->execute([$taskId]);
+
+        return array_map([CommentRepository::class, 'mapComment'], $statement->fetchAll());
+    }
+
 
     /**
      * Ajoute assignations et commentaires à une liste de tâches (2 requêtes au total).
